@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Odin General API - Documentacao</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.45; color: #111827; }
+    h1, h2, h3 { color: #111827; }
+    code { font-family: Consolas, monospace; background: #f3f4f6; padding: 2px 4px; }
+    pre { background: #f3f4f6; padding: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Odin General API</h1>
+  <p>A General API e a API principal do Odin. Ela atende mobile e dashboard web, centralizando autenticacao, usuarios, dispositivos, grupos, kanban, tarefas, notificacoes agendadas, outbox e eventos em tempo real.</p>
+
+  <h2>Stack</h2>
+  <ul>
+    <li>Kotlin 2.4, Java 21 e Spring Boot 4.1.</li>
+    <li>PostgreSQL como banco canonico.</li>
+    <li>Redis para cache, locks, throttle e idempotencia auxiliar.</li>
+    <li>RabbitMQ para eventos de notificacao.</li>
+    <li>Flyway para migrations.</li>
+    <li>Spring Security com JWT proprio.</li>
+    <li>Spring WebSocket/STOMP para tempo real.</li>
+    <li>Springdoc OpenAPI para documentacao interativa.</li>
+  </ul>
+
+  <h2>Responsabilidades</h2>
+  <ul>
+    <li>Receber requisicoes do mobile e dashboard web.</li>
+    <li>Validar autenticacao e autorizacao.</li>
+    <li>Aplicar RBAC por grupo: ADMIN, EDITOR, MEMBER e VIEWER.</li>
+    <li>Gerenciar dispositivos e push tokens.</li>
+    <li>Gerenciar grupos, membros, boards, colunas e tasks/cards.</li>
+    <li>Validar movimentacao de cards no backend.</li>
+    <li>Criar notification_jobs e outbox_events.</li>
+    <li>Publicar eventos para o worker Go por RabbitMQ quando disponivel.</li>
+    <li>Emitir eventos em tempo real por WebSocket/STOMP.</li>
+  </ul>
+
+  <h2>Estrutura</h2>
+  <pre>backend/General API/
+  build.gradle.kts
+  settings.gradle.kts
+  Dockerfile
+  docker-compose.yml
+  src/main/kotlin/br/com/odin/general/
+    config/
+    common/
+    identity/
+    device/
+    group/
+    board/
+    task/
+    notification/
+    outbox/
+    websocket/
+    audit/
+  src/main/resources/
+    application.yml
+    db/migration/</pre>
+
+  <h2>Camadas e modulos</h2>
+  <table>
+    <tr><th>Modulo</th><th>Funcao</th></tr>
+    <tr><td>identity</td><td>Cadastro, login, JWT e usuario atual.</td></tr>
+    <tr><td>device</td><td>Registro e desativacao de push tokens.</td></tr>
+    <tr><td>group</td><td>Grupos, membros, convites e papeis.</td></tr>
+    <tr><td>board</td><td>Quadros kanban e colunas.</td></tr>
+    <tr><td>task</td><td>Tarefas pessoais, cards, responsaveis, movimentacao e conclusao.</td></tr>
+    <tr><td>notification</td><td>Regras, jobs e central de notificacoes.</td></tr>
+    <tr><td>outbox</td><td>Eventos persistidos e publicacao RabbitMQ.</td></tr>
+    <tr><td>websocket</td><td>Eventos de board, grupo e usuario.</td></tr>
+    <tr><td>audit</td><td>Historico interno de acoes relevantes.</td></tr>
+  </table>
+
+  <h2>Principais endpoints</h2>
+  <pre>POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+
+GET   /api/v1/users/me
+PATCH /api/v1/users/me
+DELETE /api/v1/users/me
+
+POST   /api/v1/devices
+GET    /api/v1/devices
+DELETE /api/v1/devices/{deviceId}
+
+POST   /api/v1/groups
+GET    /api/v1/groups
+GET    /api/v1/groups/{groupId}
+PATCH  /api/v1/groups/{groupId}
+DELETE /api/v1/groups/{groupId}
+
+POST   /api/v1/groups/{groupId}/members/invite
+POST   /api/v1/groups/{groupId}/members/accept
+GET    /api/v1/groups/{groupId}/members
+PATCH  /api/v1/groups/{groupId}/members/{memberId}/role
+DELETE /api/v1/groups/{groupId}/members/{memberId}
+
+POST  /api/v1/groups/{groupId}/boards
+GET   /api/v1/groups/{groupId}/boards
+GET   /api/v1/boards/{boardId}
+PATCH /api/v1/boards/{boardId}
+
+POST   /api/v1/boards/{boardId}/columns
+GET    /api/v1/boards/{boardId}/columns
+PATCH  /api/v1/columns/{columnId}
+DELETE /api/v1/columns/{columnId}
+
+POST   /api/v1/tasks/personal
+GET    /api/v1/tasks/personal
+POST   /api/v1/boards/{boardId}/tasks
+GET    /api/v1/boards/{boardId}/tasks
+GET    /api/v1/tasks/{taskId}
+PATCH  /api/v1/tasks/{taskId}
+DELETE /api/v1/tasks/{taskId}
+PATCH  /api/v1/tasks/{taskId}/move
+PATCH  /api/v1/tasks/{taskId}/complete
+POST   /api/v1/tasks/{taskId}/assignees
+DELETE /api/v1/tasks/{taskId}/assignees/{userId}
+
+GET    /api/v1/notifications
+PATCH  /api/v1/notifications/{notificationId}/read
+POST   /api/v1/notification-rules
+GET    /api/v1/notification-rules
+PATCH  /api/v1/notification-rules/{ruleId}
+DELETE /api/v1/notification-rules/{ruleId}</pre>
+
+  <h2>Fluxo de notificacoes</h2>
+  <ol>
+    <li>A API recebe uma acao, como criar card ou atribuir responsavel.</li>
+    <li>A API valida regras e permissoes.</li>
+    <li>A API salva task/card no PostgreSQL.</li>
+    <li>A API cria registros em notification_jobs com idempotency_key.</li>
+    <li>A API cria outbox_events e tenta publicar em RabbitMQ.</li>
+    <li>O worker Go processa os jobs vencidos e envia push.</li>
+  </ol>
+
+  <h2>Execucao local</h2>
+  <pre>cd "backend/General API"
+docker compose up -d
+gradle bootRun</pre>
+
+  <p>Documentacao interativa: <code>/swagger-ui.html</code>. Health check: <code>/api/v1/health</code>.</p>
+</body>
+</html>

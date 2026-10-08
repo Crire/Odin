@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: odin_general
+      POSTGRES_USER: odin
+      POSTGRES_PASSWORD: odin
+    ports:
+      - "5432:5432"
+    volumes:
+      - odin_general_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - odin_general_redis:/data
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - odin_general_rabbitmq:/var/lib/rabbitmq
+
+volumes:
+  odin_general_postgres:
+  odin_general_redis:
+  odin_general_rabbitmq:

@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: odin-general-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/odin_general}
+    username: ${DATABASE_USERNAME:odin}
+    password: ${DATABASE_PASSWORD:odin}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+odin:
+  security:
+    jwt-secret: ${JWT_SECRET:change-this-local-secret-with-at-least-32-characters}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:60}
+  events:
+    exchange: ${ODIN_EVENTS_EXCHANGE:odin.events}
+    notification-queue: ${ODIN_NOTIFICATION_QUEUE:notification.jobs}
+  notifications:
+    default-reminder-minutes-before-due: ${ODIN_DEFAULT_REMINDER_MINUTES_BEFORE_DUE:30}

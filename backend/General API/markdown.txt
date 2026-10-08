@@ -1,0 +1,95 @@
+Plano da Odin General API
+=========================
+
+Responsabilidade principal
+--------------------------
+
+A General API e a API publica/principal do Odin. Ela deve atender mobile e dashboard web, mantendo regras de negocio, autenticacao, autorizacao por grupo, tarefas pessoais, kanban colaborativo, agendamento de notificacoes, auditoria e eventos em tempo real.
+
+Tecnologias
+-----------
+
+- Kotlin 2.4
+- Spring Boot 4.1
+- Java 21
+- PostgreSQL como banco principal
+- Redis para cache, locks, throttle e idempotencia
+- RabbitMQ para fila de eventos
+- Flyway para migrations
+- Spring Security com JWT
+- Spring Data JPA
+- Spring WebSocket/STOMP
+- Spring AMQP
+- Spring Actuator
+- Springdoc OpenAPI
+
+Camadas
+-------
+
+- identity/auth: usuarios, login, JWT e usuario atual
+- device: push tokens e dispositivos
+- group: grupos, membros e RBAC
+- board: quadros e colunas
+- task: tasks pessoais, cards, responsaveis, movimentacao e conclusao
+- notification: regras, jobs e entregas
+- outbox: eventos persistidos e publicacao em fila
+- websocket: eventos em tempo real
+- common/config: excecoes, filtros, seguranca e infraestrutura
+
+Classes principais
+------------------
+
+- OdinGeneralApiApplication
+- SecurityConfig, RabbitMqConfig, WebSocketConfig, OpenApiConfig
+- JwtAuthenticationFilter, JwtTokenService, AuthController, MeController
+- AppUser, UserRepository, AuthService
+- Device, DeviceRepository, DeviceService, DeviceController
+- OdinGroup, GroupMember, GroupService, GroupPermissionService, GroupController, GroupMemberController
+- Board, BoardColumn, BoardService, BoardController, BoardColumnController
+- TaskItem, TaskAssignee, TaskMovement, TaskPermissionValidator, TaskService, TaskController
+- NotificationRule, NotificationJob, NotificationDelivery, NotificationSchedulerService, NotificationController
+- OutboxEvent, OutboxEventPublisher
+- RealtimeEventPublisher
+- GlobalExceptionHandler, CorrelationIdFilter
+
+Arquitetura de pastas
+---------------------
+
+backend/General API/
+- build.gradle.kts
+- settings.gradle.kts
+- docker-compose.yml
+- Dockerfile
+- src/main/kotlin/br/com/odin/general
+  - config
+  - common
+  - identity
+  - device
+  - group
+  - board
+  - task
+  - notification
+  - outbox
+  - websocket
+- src/main/resources
+  - application.yml
+  - db/migration
+
+Requisitos implementados
+------------------------
+
+- Health check proprio em /api/v1/health e Actuator.
+- Cadastro e login de usuarios.
+- JWT para endpoints protegidos.
+- Cadastro de dispositivos.
+- Criacao de grupos com admin, board padrao e colunas padrao.
+- Gestao de membros com papeis.
+- CRUD inicial de boards e colunas.
+- Criacao de task pessoal e card de grupo.
+- Validacao backend para movimentacao de cards.
+- Agendamento de notification_jobs.
+- Registro de outbox_events.
+- Publicacao em RabbitMQ quando disponivel.
+- Eventos WebSocket para boards e grupos.
+- Migrations versionadas em Flyway.
+- Erros padronizados em JSON.

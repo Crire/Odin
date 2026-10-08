@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Odin Service API - Documentacao</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.45; color: #111827; }
+    h1, h2, h3 { color: #111827; }
+    code { font-family: Consolas, monospace; background: #f3f4f6; padding: 2px 4px; }
+    pre { background: #f3f4f6; padding: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Odin Service API / Notification Worker</h1>
+  <p>A Service API e o servico interno em Go responsavel por processar notificacoes e tarefas assincronas do Odin. Ela nao contem regras complexas de kanban; essas regras pertencem a General API.</p>
+
+  <h2>Stack</h2>
+  <ul>
+    <li>Go 1.26.</li>
+    <li>net/http e chi para HTTP interno.</li>
+    <li>PostgreSQL via pgx.</li>
+    <li>Redis via go-redis para locks, idempotencia e throttle.</li>
+    <li>RabbitMQ via amqp091-go como gatilho opcional.</li>
+    <li>slog para logs estruturados.</li>
+    <li>Provedor noop por padrao e FCM opcional.</li>
+  </ul>
+
+  <h2>Responsabilidades</h2>
+  <ul>
+    <li>Buscar notification_jobs pendentes e vencidos.</li>
+    <li>Fazer claim atomico dos jobs com PostgreSQL.</li>
+    <li>Evitar processamento duplicado com Redis.</li>
+    <li>Aplicar throttle por usuario.</li>
+    <li>Verificar se a task ainda esta ativa e se o usuario ainda e responsavel/criador.</li>
+    <li>Verificar janela de notificacao do usuario.</li>
+    <li>Buscar devices ativos.</li>
+    <li>Enviar notificacoes pelo provedor configurado.</li>
+    <li>Registrar notification_deliveries.</li>
+    <li>Marcar jobs como SENT, FAILED, SKIPPED ou reprogramar retry.</li>
+  </ul>
+
+  <h2>Estrutura</h2>
+  <pre>backend/Service API/
+  go.mod
+  Dockerfile
+  cmd/service-api/main.go
+  internal/
+    application/
+    config/
+    domain/
+    http/
+      handlers/
+      middleware/
+    observability/
+    provider/
+    queue/
+    redislock/
+    storage/postgres/
+    worker/
+  migrations/</pre>
+
+  <h2>Componentes</h2>
+  <table>
+    <tr><th>Modulo</th><th>Funcao</th></tr>
+    <tr><td>application</td><td>Orquestra processamento de jobs.</td></tr>
+    <tr><td>storage/postgres</td><td>Claim, leitura e atualizacao de notification_jobs.</td></tr>
+    <tr><td>redislock</td><td>Locks, idempotencia e throttle.</td></tr>
+    <tr><td>provider</td><td>Envio noop ou FCM.</td></tr>
+    <tr><td>queue</td><td>Consumo RabbitMQ opcional como gatilho.</td></tr>
+    <tr><td>worker</td><td>Scheduler por polling controlado.</td></tr>
+    <tr><td>http</td><td>Health, readiness e operacoes internas.</td></tr>
+  </table>
+
+  <h2>Endpoints internos</h2>
+  <pre>GET  /internal/v1/health
+GET  /internal/v1/ready
+POST /internal/v1/notification-jobs/process
+POST /internal/v1/notification-jobs/{jobId}/retry</pre>
+
+  <p>Endpoints de acao exigem <code>X-Service-Token</code> ou <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+
+  <h2>Fluxo de processamento</h2>
+  <ol>
+    <li>O scheduler chama ProcessDue periodicamente.</li>
+    <li>O repositorio faz claim atomico de jobs PENDING vencidos.</li>
+    <li>O Redis cria lock por job e marca idempotency_key.</li>
+    <li>O worker valida task, janela de horario e throttle.</li>
+    <li>O worker envia para cada device ativo.</li>
+    <li>O worker grava uma entrega por device.</li>
+    <li>Se houver sucesso, o job vira SENT; se todos falharem, entra em retry ou FAILED.</li>
+  </ol>
+
+  <h2>Variaveis principais</h2>
+  <pre>HTTP_ADDR=:8081
+SERVICE_TOKEN=local-service-token
+DATABASE_URL=postgres://odin:odin@localhost:5432/odin_general?sslmode=disable
+REDIS_ADDR=localhost:6379
+RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+RABBITMQ_QUEUE=notification.jobs
+WORKER_ENABLED=true
+WORKER_INTERVAL=10s
+WORKER_BATCH_SIZE=25
+NOTIFICATION_PROVIDER=noop
+FCM_SERVER_KEY=
+THROTTLE_WINDOW=15m
+IDEMPOTENCY_TTL=24h</pre>
+
+  <h2>Execucao local</h2>
+  <pre>cd "backend/Service API"
+go test ./...
+go run ./cmd/service-api</pre>
+
+  <p>Em ambientes sem Go local, use Docker: <code>docker build -t odin-service-api .</code>.</p>
+</body>
+</html>

@@ -1,0 +1,10 @@
+Documentos gerados para o Odin
+==============================
+
+- Odin General API Documentation.docx
+- Odin Service API Documentation.docx
+
+Fontes editaveis:
+
+- odin-general-api-documentation.html
+- odin-service-api-documentation.html

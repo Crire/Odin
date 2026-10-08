@@ -1,0 +1,59 @@
+Plano da Odin Service API / Notification Worker
+===============================================
+
+Papel
+-----
+
+A Service API e o worker interno em Go responsavel por notificacoes confiaveis e tarefas assincronas do Odin.
+
+Responsabilidades
+------------------
+
+- Ler eventos pendentes via RabbitMQ, quando configurado.
+- Fazer polling de notification_jobs pendentes no PostgreSQL.
+- Verificar idempotencia por job.
+- Aplicar throttle por usuario usando Redis.
+- Buscar devices ativos.
+- Enviar push por provedor configuravel, inicialmente noop/FCM.
+- Registrar entregas e falhas em notification_deliveries.
+- Atualizar status do job.
+- Expor endpoints internos de health, readiness e processamento manual.
+
+Tecnologias
+-----------
+
+- Go 1.26
+- net/http + chi
+- PostgreSQL via pgx
+- Redis via go-redis
+- RabbitMQ via amqp091-go
+- slog para logs estruturados
+- Docker
+
+Arquitetura de pastas
+---------------------
+
+backend/Service API/
+- go.mod
+- Dockerfile
+- cmd/service-api/main.go
+- internal/application
+- internal/config
+- internal/domain
+- internal/http
+- internal/observability
+- internal/provider
+- internal/queue
+- internal/redislock
+- internal/storage/postgres
+- internal/worker
+- migrations
+
+Requisitos
+----------
+
+- Nao decidir permissoes de grupo ou kanban.
+- Nao enviar notificacao duplicada para a mesma idempotency_key.
+- Nao processar jobs cancelados, concluidos ou fora do horario.
+- Registrar resultado por device.
+- Manter retries controlados e falha final.

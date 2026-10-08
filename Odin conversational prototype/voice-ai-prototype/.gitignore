@@ -1,0 +1,28 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+
+# Generated audio debug files
+backend/audio-files-for-testing/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
